@@ -50,6 +50,43 @@ void loadCharacterStats() {
   }
 }
 
+class Monster {
+  String name;
+  int health;
+  int defense;
+
+  Monster(this.name, this.health, this.defense);
+
+  void display() {
+    print('Name: $name, Health: $health, Defense: $defense');
+  }
+}
+
+void loadMonsterStats() {
+  try {
+    final file = File('Monsters.txt');
+    final lines = file.readAsLinesSync();
+
+    for (var line in lines) {
+      final stats = line.split(',');
+
+      if (stats.length != 3)
+        throw FormatException('Invalid monster data in line: $line');
+
+      String name = stats[0];
+      int health = int.parse(stats[1]);
+      int defense = int.parse(stats[2]);
+
+      Monster monster = Monster(name, health, defense);
+      monster.display();
+    }
+  } catch (e) {
+    print('몬스터 데이터를 불러오는 데 실패했습니다: $e');
+    exit(1);
+  }
+}
+
 void main() {
   loadCharacterStats();
+  loadMonsterStats();
 }
