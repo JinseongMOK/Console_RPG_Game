@@ -1,5 +1,7 @@
 # Console RPG Game
 
+<img src="https://img.shields.io/badge/dart-0175C2?style=for-the-badge&logo=기술스택아이콘&logoColor=white">
+
 ### 게임 설명
 
 콘솔을 통해 캐릭터가 턴마다 공격과 방어를 하며 몬스터를 사냥해가는 게임입니다.
