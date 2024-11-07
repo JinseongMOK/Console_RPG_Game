@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 class Character {
   String name;
@@ -9,84 +10,158 @@ class Character {
   Character(this.name, this.health, this.attack, this.defense);
 
   void display() {
-    print('Name: $name, Health: $health, Attack: $attack, Defense: $defense');
+    print('이름: ${name}, 체력: ${health}, 공격력: ${attack}, 방어력: ${defense}');
   }
-}
 
-String getCharacterName() {
-  RegExp nameRegExp = RegExp(r'^[a-zA-Z가-힣]+$');
-  String? characterName;
-
-  while (true) {
-    print("캐릭터 이름을 입력하세요. (영어 대소문자와 한글만 가능):");
-    characterName = stdin.readLineSync();
-
-    if (characterName != null && nameRegExp.hasMatch(characterName)) {
-      return characterName;
-    } else {
-      print("영어 대소문자와 한글만 사용하세요.");
-    }
+  int takeDamage(int damage) {
+    int damageTaken = max(damage - defense, 0);
+    health = max(health - damageTaken, 0);
+    return damageTaken;
   }
-}
 
-void loadCharacterStats() {
-  try {
-    final file = File('characters.txt');
-    final contents = file.readAsStringSync();
-    final stats = contents.split(',');
-
-    if (stats.length != 3) throw FormatException('Invalid character data');
-
-    int health = int.parse(stats[0]);
-    int attack = int.parse(stats[1]);
-    int defense = int.parse(stats[2]);
-
-    String name = getCharacterName();
-    Character character = Character(name, health, attack, defense);
-    character.display();
-  } catch (e) {
-    print('캐릭터 데이터를 불러오는 데 실패했습니다: $e');
-    exit(1);
+  int attackTarget(Monster monster) {
+    int damageDealt = monster.takeDamage(attack);
+    print('${name}이 ${monster.name}에게 ${damageDealt}의 데미지를 입혔습니다.');
+    print('');
+    return damageDealt;
   }
 }
 
 class Monster {
   String name;
   int health;
+  int attack;
   int defense;
 
-  Monster(this.name, this.health, this.defense);
+  Monster(this.name, this.health, this.attack, this.defense);
 
   void display() {
-    print('Name: $name, Health: $health, Defense: $defense');
+    print('이름: ${name}, 체력: ${health}, 공격력: ${attack}, 방어력: ${defense}');
+  }
+
+  int takeDamage(int damage) {
+    int damageTaken = max(damage - defense, 0);
+    health = max(health - damageTaken, 0);
+    return damageTaken;
+  }
+
+  int attackTarget(Character character) {
+    int damageDealt = character.takeDamage(attack);
+    print('${name}이 ${character.name}에게 ${damageDealt}의 데미지를 입혔습니다.');
+    print('');
+    return damageDealt;
   }
 }
 
-void loadMonsterStats() {
-  try {
-    final file = File('Monsters.txt');
-    final lines = file.readAsLinesSync();
+Character loadCharacterStats() {
+  final file = File('characters.txt');
+  final contents = file.readAsStringSync();
+  final stats = contents.split(',');
 
-    for (var line in lines) {
-      final stats = line.split(',');
+  if (stats.length != 3) throw FormatException('Invalid character data');
 
-      if (stats.length != 3)
-        throw FormatException('Invalid monster data in line: $line');
+  String name = getCharacterName();
+  int health = int.parse(stats[0]);
+  int attack = int.parse(stats[1]);
+  int defense = int.parse(stats[2]);
 
-      String name = stats[0];
-      int health = int.parse(stats[1]);
-      int defense = int.parse(stats[2]);
+  Character character = Character(name, health, attack, defense);
+  character.display();
+  return character;
+}
 
-      Monster monster = Monster(name, health, defense);
-      monster.display();
+String getCharacterName() {
+  print("캐릭터 이름을 입력하세요:");
+  return stdin.readLineSync() ?? "Player";
+}
+
+List<Monster> loadMonsters() {
+  final file = File('monsters.txt');
+  final lines = file.readAsLinesSync();
+  List<Monster> monsters = [];
+
+  for (var line in lines) {
+    final stats = line.split(',');
+
+    if (stats.length != 3) {
+      print('Invalid monster data in line: ${line}');
+      continue;
     }
-  } catch (e) {
-    print('몬스터 데이터를 불러오는 데 실패했습니다: $e');
-    exit(1);
+
+    String name = stats[0];
+    int health = int.parse(stats[1]);
+    int attack = int.parse(stats[2]);
+    int defense = 5; // 기본 방어력
+
+    monsters.add(Monster(name, health, attack, defense));
+  }
+  return monsters;
+}
+
+void saveResult(int monstersDefeated) {
+  final outputFile = File('result.txt');
+  outputFile.writeAsStringSync('사냥한 몬스터 수: ${monstersDefeated}\n');
+}
+
+void battle(Character character, List<Monster> monsters) {
+  Random random = Random();
+  int monstersDefeated = 0;
+
+  while (true) {
+    // 랜덤으로 몬스터 선택
+    Monster monster = monsters[random.nextInt(monsters.length)];
+    print('\n새로운 몬스터가 나타났습니다!');
+    monster.display();
+
+    while (character.health > 0 && monster.health > 0) {
+      // 30% 확률로 캐릭터 체력 회복
+      if (random.nextDouble() < 0.3) {
+        character.health += 10;
+        print('${character.name}의 체력이 10 증가했습니다! 현재 체력: ${character.health}');
+      }
+
+      // 캐릭터의 행동 선택
+      print('${character.name}의 턴입니다 (1: 공격, 2: 방어): ');
+      String? choice = stdin.readLineSync();
+
+      if (choice == '1') {
+        character.attackTarget(monster);
+      } else if (choice == '2') {
+        print('${character.name}이 방어 했습니다.');
+        print('');
+      }
+
+      // 몬스터가 쓰러졌는지 확인
+      if (monster.health <= 0) {
+        print('${monster.name}을 물리쳤습니다!');
+        monstersDefeated++;
+        break;
+      }
+
+      // 몬스터의 턴
+      monster.attackTarget(character);
+
+      // 캐릭터가 쓰러졌는지 확인
+      if (character.health <= 0) {
+        print('${character.name}이 쓰러졌습니다.');
+        saveResult(monstersDefeated);
+        return;
+      }
+    }
+
+    // 다음 몬스터와 싸울지 여부 확인
+    print('다음 몬스터와 싸우시겠습니까? (y/n): ');
+    String? continueChoice = stdin.readLineSync();
+    if (continueChoice != 'y') {
+      saveResult(monstersDefeated);
+      print('게임 종료! ${monstersDefeated}마리의 몬스터를 사냥했습니다.');
+      return;
+    }
   }
 }
 
 void main() {
-  loadCharacterStats();
-  loadMonsterStats();
+  Character character = loadCharacterStats();
+  List<Monster> monsters = loadMonsters();
+  battle(character, monsters);
 }
